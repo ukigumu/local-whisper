@@ -6,6 +6,7 @@ final class LocalWhisperErrorTests: XCTestCase {
         let message = LocalWhisperError.macOSRequired.errorDescription ?? ""
         XCTAssertTrue(message.contains("macOS"))
         XCTAssertTrue(message.contains("make build"))
+        XCTAssertTrue(message.contains("LocalWhisper.xcodeproj"))
     }
 
     func testUnsupportedMentionsContainers() {
