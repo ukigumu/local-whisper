@@ -52,7 +52,6 @@ public enum WhisperTranscriber {
             downloadBase: request.downloadBase,
             modelFolder: request.modelFolder,
             verbose: request.verbose,
-            logLevel: request.verbose ? .debug : .info,
             download: allowDownload
         )
 
