@@ -13,6 +13,11 @@ var executableDependencies: [Target.Dependency] = [
     .product(name: "ArgumentParser", package: "swift-argument-parser"),
 ]
 
+var packageProducts: [Product] = [
+    .executable(name: "local-whisper", targets: ["local-whisper"]),
+    .library(name: "LocalWhisperCore", targets: ["LocalWhisperCore"]),
+]
+
 var packageTargets: [Target] = [
     .target(
         name: "LocalWhisperCore"
@@ -37,6 +42,9 @@ packageTargets.append(
     )
 )
 executableDependencies.append("LocalWhisperMac")
+packageProducts.append(
+    .library(name: "LocalWhisperMac", targets: ["LocalWhisperMac"])
+)
 #endif
 
 packageTargets.append(
@@ -51,9 +59,7 @@ let package = Package(
     platforms: [
         .macOS(.v14),
     ],
-    products: [
-        .executable(name: "local-whisper", targets: ["local-whisper"]),
-    ],
+    products: packageProducts,
     dependencies: packageDependencies,
     targets: packageTargets
 )

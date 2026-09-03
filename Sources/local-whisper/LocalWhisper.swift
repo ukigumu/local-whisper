@@ -18,6 +18,8 @@ struct LocalWhisper: AsyncParsableCommand {
 
         First run may download a Core ML model into the local cache.
         After that, inference stays on the Mac. Use --model-path and --no-download for a fully offline machine.
+
+        The same pipeline powers the Local Whisper Mac app (open LocalWhisper.xcodeproj).
         """
     )
 
@@ -31,7 +33,7 @@ struct LocalWhisper: AsyncParsableCommand {
     var outputDir: String?
 
     @Option(name: .long, help: "WhisperKit model name. Default: tiny.")
-    var model: String = "tiny"
+    var model: String = TranscriptionDefaults.model
 
     @Option(name: .long, help: "Local CoreML model folder. Implies no download.")
     var modelPath: String?
@@ -65,14 +67,7 @@ struct LocalWhisper: AsyncParsableCommand {
     #if os(macOS)
     private func runOnMac() async throws {
         let inputURL = resolvedURL(input)
-        guard FileManager.default.fileExists(atPath: inputURL.path) else {
-            throw LocalWhisperError.fileNotFound(inputURL.path)
-        }
-
-        guard let kind = MediaClassifier.kind(for: inputURL) else {
-            throw LocalWhisperError.unsupportedMedia(inputURL.path)
-        }
-
+        let kind = try InputFile.classify(inputURL)
         let formats = try OutputFormats.parse(self.formats)
         let outputDirectory = outputDir.map(resolvedURL) ?? inputURL.deletingLastPathComponent()
         let modelFolder = modelPath.map(resolvedURL)?.path
@@ -85,25 +80,25 @@ struct LocalWhisper: AsyncParsableCommand {
             log("Model: \(model)")
         }
 
-        let prepared = try await AudioExtractor.prepareAudioURL(for: inputURL, kind: kind)
-        defer { prepared.cleanup() }
-
-        if prepared.isTemporary {
-            log("Extracted audio: \(prepared.url.path)")
-        }
-
-        let request = TranscribeRequest(
-            audioPath: prepared.url.path,
+        let job = TranscriptionJob(
+            inputURL: inputURL,
             model: model,
             modelFolder: modelFolder,
-            downloadBase: ModelCache.defaultDownloadBase(),
-            download: download && modelFolder == nil,
             language: language,
+            download: download && modelFolder == nil,
             verbose: verbose
         )
 
-        log("Transcribing with WhisperKit...")
-        let transcript = try await WhisperTranscriber.transcribe(request)
+        let transcript = try await TranscriptionPipeline.run(job) { progress in
+            if verbose {
+                switch progress.stage {
+                case .transcribing:
+                    break
+                case .preparing, .loadingModel, .finished:
+                    Stderr.write(progress.message)
+                }
+            }
+        }
         let written = try OutputWriter.write(
             transcript: transcript,
             inputURL: inputURL,

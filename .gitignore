@@ -4,6 +4,7 @@ Package.resolved
 xcuserdata/
 *.xcuserstate
 DerivedData/
+build/
 .DS_Store
 *.swp
 *~

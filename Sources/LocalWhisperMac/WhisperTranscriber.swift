@@ -33,6 +33,13 @@ public struct TranscribeRequest: Sendable {
 
 public enum WhisperTranscriber {
     public static func transcribe(_ request: TranscribeRequest) async throws -> Transcript {
+        try await transcribe(request, onPartial: nil)
+    }
+
+    public static func transcribe(
+        _ request: TranscribeRequest,
+        onPartial: (@Sendable (String) -> Bool)?
+    ) async throws -> Transcript {
         if let modelFolder = request.modelFolder {
             var isDirectory: ObjCBool = false
             let exists = FileManager.default.fileExists(atPath: modelFolder, isDirectory: &isDirectory)
@@ -77,7 +84,10 @@ public enum WhisperTranscriber {
         do {
             results = try await kit.transcribe(
                 audioPath: request.audioPath,
-                decodeOptions: options
+                decodeOptions: options,
+                callback: { progress in
+                    onPartial?(progress.text)
+                }
             )
         } catch {
             throw LocalWhisperError.transcriptionFailed(error.localizedDescription)
